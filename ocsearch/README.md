@@ -21,7 +21,7 @@ Search and browse all OpenCode sessions across every project on your machine, wi
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.6+
 - [fzf](https://github.com/junegunn/fzf) (`brew install fzf`)
 - [OpenCode](https://github.com/opencode-ai/opencode) (with its default SQLite database)
 
