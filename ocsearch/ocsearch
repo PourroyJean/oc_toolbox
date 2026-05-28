@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+"""ocsearch - Search and browse OpenCode sessions via fzf.
+
+A lightweight CLI tool to list and search across all OpenCode sessions
+stored locally, with interactive fzf selection to jump into any session.
+
+Requires: fzf (brew install fzf), opencode
+Database:  ~/.local/share/opencode/opencode.db
+"""
+
+import os
+import sqlite3
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+
+DB_PATH = os.path.expanduser("~/.local/share/opencode/opencode.db")
+HOME = os.path.expanduser("~")
+
+# ANSI color codes
+# Colors from  https://github.com/Fruchix/star/blob/main/libexec/star/star-setcolors.sh
+WHITE = "\033[37m"
+ORANGE = "\033[38;2;255;131;0m"
+GREEN = "\033[38;2;1;169;130m"
+RESET = "\033[0m"
+
+
+def get_db():
+    """Open a read-only connection to the OpenCode database."""
+    if not os.path.exists(DB_PATH):
+        print(f"Database not found: {DB_PATH}", file=sys.stderr)
+        sys.exit(1)
+    return sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+
+
+def format_date(ts_ms):
+    """Format a millisecond timestamp as YYYY-MM-DD HH:MM."""
+    return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+
+def format_tokens(n):
+    """Format token count: 1234567 -> '1.2M', 45000 -> '45k', 832 -> '832'."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.0f}k"
+    return str(n)
+
+
+def format_age(created_ms):
+    """Format time elapsed since creation: '3.2d', '5.1h', '42m', '<1m'."""
+    seconds = (time.time() * 1000 - created_ms) / 1000
+    if seconds < 60:
+        return "<1m"
+    minutes = seconds / 60
+    if minutes < 60:
+        return f"{int(minutes)}m"
+    hours = minutes / 60
+    if hours < 24:
+        return f"{hours:.1f}h"
+    days = hours / 24
+    return f"{days:.1f}d"
+
+
+def short_dir(path):
+    """Replace home prefix with ~."""
+    if path.startswith(HOME):
+        return "~" + path[len(HOME):]
+    return path
+
+
+def cmd_list():
+    """List all root sessions with metadata."""
+    db = get_db()
+    rows = db.execute("""
+        SELECT s.id, s.title, s.directory, s.time_updated,
+               (SELECT COUNT(*) FROM message m WHERE m.session_id = s.id),
+               s.tokens_input + s.tokens_output,
+               s.time_created
+        FROM session s
+        WHERE s.parent_id IS NULL
+        ORDER BY s.time_updated DESC
+    """).fetchall()
+    db.close()
+
+    entries = []
+    max_dir = 0
+    max_title = 0
+
+    for sid, title, directory, ts_updated, msg_count, tokens, ts_created in rows:
+        d = short_dir(directory)
+        t = (title or "").replace("\n", " ")[:50]
+        entries.append((sid, format_date(ts_updated), d, t, msg_count,
+                        format_tokens(tokens or 0), format_age(ts_created)))
+        max_dir = max(max_dir, len(d))
+        max_title = max(max_title, len(t))
+
+    lines = []
+    for sid, date, d, title, msgs, tokens, age in entries:
+        lines.append(
+            f"{sid}\t"
+            f"{WHITE}{date}{RESET}  "
+            f"{GREEN}{d:<{max_dir}}{RESET} "
+            f"{ORANGE}{title:<{max_title}}{RESET} "
+            f"{WHITE}{msgs:>6} msgs{RESET}  "
+            f"{WHITE}{tokens:>5} tk{RESET}  "
+            f"{WHITE}{age:>5}{RESET}"
+        )
+
+    header = (f"{'last active':<16}  {'dir':<{max_dir}} {'title':<{max_title}} "
+              f"{'msgs':>10}  {'tokens':>8}  {'age':>5}")
+    return lines, header
+
+
+def cmd_search(query):
+    """Search session content for a query string (case-sensitive)."""
+    db = get_db()
+    rows = db.execute("""
+        SELECT s.id, s.title, s.directory, s.time_updated,
+               substr(json_extract(p.data, '$.text'),
+                      MAX(1, instr(json_extract(p.data, '$.text'), ?) - 40), 120)
+        FROM session s
+        JOIN part p ON p.session_id = s.id
+        WHERE s.parent_id IS NULL
+          AND p.data LIKE ?
+        ORDER BY s.time_updated DESC
+    """, (query, f"%{query}%")).fetchall()
+    db.close()
+
+    seen = set()
+    entries = []
+    max_dir = 0
+    max_title = 0
+
+    for sid, title, directory, ts, snippet in rows:
+        if sid in seen:
+            continue
+        seen.add(sid)
+        d = short_dir(directory)
+        t = (title or "").replace("\n", " ")[:50]
+        s = (snippet or "").replace("\n", " ").replace("\t", " ").strip()[:80]
+        entries.append((sid, format_date(ts), d, t, s))
+        max_dir = max(max_dir, len(d))
+        max_title = max(max_title, len(t))
+
+    lines = []
+    for sid, date, d, title, snippet in entries:
+        lines.append(
+            f"{sid}\t"
+            f"{WHITE}{date}{RESET}  "
+            f"{GREEN}{d:<{max_dir}}{RESET} "
+            f"{ORANGE}{title:<{max_title}}{RESET} "
+            f"{WHITE}{snippet}{RESET}"
+        )
+
+    header = f"{'last active':<16}  {'dir':<{max_dir}} {'title':<{max_title}} {'snippet'}"
+    return lines, header
+
+
+def run_fzf(lines, header=None):
+    """Present lines in fzf for interactive selection. Returns session ID."""
+    if not lines:
+        print("No results.", file=sys.stderr)
+        sys.exit(1)
+
+    # Pipe mode: dump to stdout for scripting
+    if not sys.stdout.isatty():
+        if header:
+            print(header)
+        for line in lines:
+            print(line)
+        sys.exit(0)
+
+    fzf_args = ["fzf", "--ansi", "--delimiter=\t", "--with-nth=2.."]
+    if header:
+        fzf_args.append(f"--header={header}")
+
+    try:
+        result = subprocess.run(fzf_args, input="\n".join(lines),
+                                capture_output=True, text=True)
+    except FileNotFoundError:
+        print("fzf not found. Install: brew install fzf", file=sys.stderr)
+        sys.exit(1)
+
+    if result.returncode != 0:
+        sys.exit(0)
+
+    return result.stdout.strip().split("\t")[0]
+
+
+def open_session(session_id):
+    """Open an OpenCode session by ID, switching to its working directory."""
+    db = get_db()
+    row = db.execute("SELECT directory FROM session WHERE id = ?",
+                     (session_id,)).fetchone()
+    db.close()
+
+    directory = row[0] if row else "."
+    os.chdir(directory)
+    os.execvp("opencode", ["opencode", "-s", session_id])
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: ocsearch list          - list all sessions (interactive)")
+        print("       ocsearch search QUERY  - search session content")
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "list":
+        lines, header = cmd_list()
+        open_session(run_fzf(lines, header))
+
+    elif cmd == "search":
+        if len(sys.argv) < 3:
+            print("Usage: ocsearch search QUERY", file=sys.stderr)
+            sys.exit(1)
+        lines, header = cmd_search(" ".join(sys.argv[2:]))
+        open_session(run_fzf(lines, header))
+
+    else:
+        print(f"Unknown command: {cmd}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
