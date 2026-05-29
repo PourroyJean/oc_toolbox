@@ -29,6 +29,7 @@ Search and browse all OpenCode sessions across every project on your machine, wi
 
 ```bash
 # Symlink (updates automatically with git pull)
+mkdir -p ~/.local/bin
 ln -sf "$(pwd)/ocsearch" ~/.local/bin/ocsearch
 ```
 
