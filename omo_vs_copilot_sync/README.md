@@ -1,5 +1,18 @@
 # omo_vs_copilot_sync
 
+## OpenCode Prompt
+
+Use this prompt in OpenCode to run a full audit and upgrade cycle:
+
+```
+- Run `omo_vs_copilot_sync` to test my GitHub Copilot model availability and validate my OMO config. 
+- Then read the OMO reference docs at https://github.com/code-yeongyu/oh-my-openagent/blob/dev/docs/reference/configuration.md (sections "Agent Provider Chains" and "Category Provider Chains"). 
+- Compare my current config (~/.config/opencode/oh-my-openagent.json) against the official recommendations, only proposing models confirmed available by the script.
+- Present a table of recommended changes with justification, then ask me for validation before applying.
+```
+
+---
+
 Test all models available from your GitHub Copilot subscription, then cross-check your `oh-my-openagent.json` config to detect broken or retired model references.
 
 
