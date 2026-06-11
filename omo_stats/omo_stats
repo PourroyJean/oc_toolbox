@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""omo_stats - OpenCode usage statistics.
+
+Displays aggregated usage statistics from OpenCode sessions stored locally.
+
+Database: ~/.local/share/opencode/opencode.db
+"""
+
+import argparse
+import json
+import os
+import sqlite3
+import sys
+import time
+from datetime import datetime, timezone
+
+DB_PATH = os.environ.get("DB_PATH", os.path.expanduser("~/.local/share/opencode/opencode.db"))
+HOME = os.path.expanduser("~")
+
+# ANSI color codes
+# Colors from  https://github.com/Fruchix/star/blob/main/libexec/star/star-setcolors.sh
+WHITE = "\033[37m"
+ORANGE = "\033[38;2;255;131;0m"
+GREEN = "\033[38;2;1;169;130m"
+RESET = "\033[0m"
+
+
+def get_db():
+    """Open a read-only connection to the OpenCode database."""
+    if not os.path.exists(DB_PATH):
+        print(f"Database not found: {DB_PATH}", file=sys.stderr)
+        sys.exit(1)
+    return sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+
+
+def format_tokens(n):
+    """Format token count: 1234567 -> '1.2M', 45000 -> '45k', 832 -> '832'."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.0f}k"
+    return str(n)
+
+
+def format_cost(f):
+    """Format cost as dollar amount."""
+    return f"${f:.2f}"
+
+
+def short_dir(path):
+    """Replace home prefix with ~, truncate at 40 chars."""
+    if path.startswith(HOME):
+        path = "~" + path[len(HOME):]
+    if len(path) > 40:
+        path = path[:39] + "…"
+    return path
+
+
+def bar(value, max_value, width=20):
+    """Return a bar of filled/empty block chars proportional to value/max_value."""
+    if max_value == 0:
+        return ""
+    filled = round(value / max_value * width)
+    filled = max(0, min(filled, width))
+    return "▓" * filled + "░" * (width - filled)
+
+
+def format_duration(seconds):
+    """Format duration: '<1m' / '52 min' / '3.2h'."""
+    if seconds < 60:
+        return "< 1 min"
+    minutes = seconds / 60
+    if minutes < 60:
+        return f"{int(minutes)} min"
+    hours = minutes / 60
+    return f"{hours:.1f}h"
+
+
+def cmd_default():
+    print("TODO: default mode")
+
+
+def cmd_today():
+    print("TODO: today mode")
+
+
+def cmd_session(session_id):
+    print(f"TODO: session mode for {session_id}")
+
+
+parser = argparse.ArgumentParser(prog="omo_stats", description="OpenCode usage statistics")
+parser.add_argument("--today", action="store_true", help="Show today's sessions only")
+parser.add_argument("--session", metavar="ID", help="Show detail for a specific session ID")
+
+
+def main():
+    args = parser.parse_args()
+    if not os.path.exists(DB_PATH):
+        print(f"Database not found: {DB_PATH}", file=sys.stderr)
+        sys.exit(1)
+    if args.session:
+        cmd_session(args.session)
+    elif args.today:
+        cmd_today()
+    else:
+        cmd_default()
+
+
+if __name__ == "__main__":
+    main()
