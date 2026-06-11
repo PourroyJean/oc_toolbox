@@ -126,6 +126,49 @@ def cmd_default():
     print(f"  TOKENS  {tok_in_vis}{' ' * max(0, COL_W - len(tok_in_vis))}{tok_out_vis}{' ' * max(0, COL_W - len(tok_out_vis))}{format_tokens(tok_reasoning)} reasoning")
     print(f"  CACHE   {cache_hit:.1f}% hit rate")
 
+    # --- Today ---
+    today_row = db.execute("""
+        SELECT COUNT(*), ROUND(SUM(cost), 2)
+        FROM session 
+        WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
+    """).fetchone()
+
+    if today_row and today_row[0] > 0:
+        t_sess, t_cost = today_row
+        t_cost = t_cost or 0.0
+        print()
+        print(f"  {WHITE}─── Today {'─' * (W - 10)}{RESET}")
+        print()
+        
+        day_num = datetime.now().day
+        t_date = f"{datetime.now().strftime('%b')} {day_num}"
+        sess_str = "1 session" if t_sess == 1 else f"{t_sess} sessions"
+        print(f"  {t_date}     {GREEN}{format_cost(t_cost)}{RESET}     {sess_str}")
+        print()
+        
+        if t_sess > 1:
+            t_models = db.execute("""
+                SELECT COALESCE(json_extract(model, '$.id'), '(unknown)') as mdl, COUNT(*)
+                FROM session
+                WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
+                GROUP BY mdl ORDER BY COUNT(*) DESC LIMIT 4
+            """).fetchall()
+            
+            if t_models:
+                m_parts = [f"{ORANGE}{m}{RESET} ({c})" for m, c in t_models]
+                print(f"  {'     '.join(m_parts)}")
+                
+        t_projs = db.execute("""
+            SELECT COALESCE(directory, '(no project)') as dir, COUNT(*)
+            FROM session
+            WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
+            GROUP BY dir ORDER BY COUNT(*) DESC LIMIT 4
+        """).fetchall()
+        
+        if t_projs:
+            p_parts = [f"{GREEN}{short_dir(d)}{RESET} ({c})" for d, c in t_projs]
+            print(f"  {'     '.join(p_parts)}")
+
     # --- By Agent ---
     agent_rows = db.execute("""
         SELECT COALESCE(agent, '(unknown)') as ag,
