@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# omo_vs_copilot_sync - Verify GitHub Copilot model availability & OMO config validity
+#
+# Fetches the live model list from the provider, tests each one,
+# then cross-checks oh-my-openagent.json to flag broken references.
+#
+# Requires: opencode (in PATH)
+# Config:   ~/.config/opencode/oh-my-openagent.json
+
+set -euo pipefail
+
+OMO_CONFIG="${OMO_CONFIG:-$HOME/.config/opencode/oh-my-openagent.json}"
+TIMEOUT_SEC=30
+PROVIDER="github-copilot"
+
+# --- Helpers ---
+
+usage() {
+  cat <<EOF
+Usage: omo_vs_copilot_sync [options]
+
+Verify GitHub Copilot model availability and validate OMO config.
+
+Options:
+  -c, --config PATH   Path to oh-my-openagent.json (default: ~/.config/opencode/oh-my-openagent.json)
+  -t, --timeout SEC   Per-model test timeout in seconds (default: 30)
+  -p, --provider NAME Provider to test (default: github-copilot)
+  -q, --quick         Skip live tests, only check config models against provider list
+  -h, --help          Show this help
+EOF
+  exit 0
+}
+
+# --- Parse args ---
+
+QUICK=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c|--config)  OMO_CONFIG="$2"; shift 2 ;;
+    -t|--timeout) TIMEOUT_SEC="$2"; shift 2 ;;
+    -p|--provider) PROVIDER="$2"; shift 2 ;;
+    -q|--quick)   QUICK=1; shift ;;
+    -h|--help)    usage ;;
+    *) echo "Unknown option: $1"; usage ;;
+  esac
+done
+
+# --- Phase 1: Fetch available models from provider ---
+
+printf "\nFetching models from provider '%s'...\n" "$PROVIDER"
+
+mapfile -t models < <(opencode models "$PROVIDER" 2>/dev/null | grep "^${PROVIDER}/")
+
+if [ ${#models[@]} -eq 0 ]; then
+  printf "Could not fetch models from 'opencode models %s'.\n" "$PROVIDER"
+  printf "Is opencode installed and authenticated?\n"
+  exit 1
+fi
+
+total=${#models[@]}
+printf "Found %d models.\n\n" "$total"
+
+# --- Phase 2: Test each model ---
+
+declare -a ok_list=()
+declare -a fail_list=()
+
+if [ $QUICK -eq 0 ]; then
+  printf "%-35s %-10s %s\n" "MODEL" "STATUS" "TIME"
+  printf "%-35s %-10s %s\n" "-----" "------" "----"
+
+  for model in "${models[@]}"; do
+    short="${model#${PROVIDER}/}"
+    start_time=$(date +%s)
+    output=$(timeout "$TIMEOUT_SEC" opencode run -m "$model" --pure "Say only: OK" 2>&1) || true
+    ec=$?
+    end_time=$(date +%s)
+    duration=$((end_time - start_time))
+
+    if [ $ec -eq 124 ]; then
+      res="TIMEOUT"
+      fail_list+=("$model")
+    elif echo "$output" | grep -qi "error.*not supported\|error.*not available\|unauthorized\|forbidden"; then
+      res="FAIL"
+      fail_list+=("$model")
+    elif [ $ec -eq 0 ]; then
+      res="OK"
+      ok_list+=("$model")
+    else
+      res="ERROR ($ec)"
+      fail_list+=("$model")
+    fi
+
+    printf "%-35s %-10s %ds\n" "$short" "$res" "$duration"
+  done
+
+  ok=${#ok_list[@]}
+  fail=${#fail_list[@]}
+
+  printf "\n--\n"
+  printf "Available: %d/%d\n" "$ok" "$total"
+  printf "Unavailable: %d/%d\n" "$fail" "$total"
+  printf "Tested: %s\n" "$(date '+%Y-%m-%d %H:%M')"
+else
+  # Quick mode: assume all listed models are available (no live test)
+  ok_list=("${models[@]}")
+  printf "Quick mode: skipping live tests, using provider list as source of truth.\n"
+fi
+
+# --- Phase 3: Validate oh-my-openagent.json ---
+
+if [ ! -f "$OMO_CONFIG" ]; then
+  printf "\nConfig not found: %s\n" "$OMO_CONFIG"
+  printf "Skipping config validation.\n"
+  exit 0
+fi
+
+printf "\n--\n"
+printf "Validating config: %s\n\n" "$OMO_CONFIG"
+
+# Extract all unique "model" values that belong to this provider
+mapfile -t config_models < <(
+  grep -o '"model"[[:space:]]*:[[:space:]]*"[^"]*"' "$OMO_CONFIG" \
+  | sed 's/.*"model"[[:space:]]*:[[:space:]]*"//;s/"//' \
+  | grep "^${PROVIDER}/" \
+  | sort -u
+)
+
+if [ ${#config_models[@]} -eq 0 ]; then
+  printf "No %s models found in config.\n" "$PROVIDER"
+  exit 0
+fi
+
+config_ok=0
+config_fail=0
+config_total=${#config_models[@]}
+
+printf "%-40s %-12s %s\n" "CONFIG MODEL" "STATUS" "ISSUE"
+printf "%-40s %-12s %s\n" "------------" "------" "-----"
+
+for cm in "${config_models[@]}"; do
+  short="${cm#${PROVIDER}/}"
+  found_ok=0
+  found_fail=0
+
+  for om in "${ok_list[@]}"; do
+    if [ "$om" = "$cm" ]; then
+      found_ok=1
+      break
+    fi
+  done
+
+  if [ $found_ok -eq 0 ]; then
+    for fm in "${fail_list[@]}"; do
+      if [ "$fm" = "$cm" ]; then
+        found_fail=1
+        break
+      fi
+    done
+  fi
+
+  if [ $found_ok -eq 1 ]; then
+    printf "%-40s %-12s\n" "$short" "OK"
+    config_ok=$((config_ok + 1))
+  elif [ $found_fail -eq 1 ]; then
+    printf "%-40s %-12s %s\n" "$short" "BROKEN" "Model not accessible"
+    config_fail=$((config_fail + 1))
+  else
+    printf "%-40s %-12s %s\n" "$short" "NOT LISTED" "Not in provider model list"
+    config_fail=$((config_fail + 1))
+  fi
+done
+
+printf "\n--\n"
+if [ $config_fail -eq 0 ]; then
+  printf "Config valid: all %d %s models are accessible.\n\n" "$config_total" "$PROVIDER"
+  exit 0
+else
+  printf "CONFIG ISSUES: %d/%d models broken or missing.\n" "$config_fail" "$config_total"
+  printf "Available models: opencode models %s\n\n" "$PROVIDER"
+  exit 1
+fi
