@@ -128,43 +128,47 @@ def cmd_default():
 
     # --- Today ---
     today_row = db.execute("""
-        SELECT COUNT(*), ROUND(SUM(cost), 2)
-        FROM session 
+        SELECT COUNT(*), ROUND(SUM(cost), 2),
+               SUM(tokens_input + tokens_output)
+        FROM session
         WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
     """).fetchone()
 
     if today_row and today_row[0] > 0:
-        t_sess, t_cost = today_row
+        t_sess, t_cost, t_tokens = today_row
         t_cost = t_cost or 0.0
+        t_tokens = t_tokens or 0
         print()
         print(f"  {WHITE}─── Today {'─' * (W - 10)}{RESET}")
         print()
-        
-        day_num = datetime.now().day
-        t_date = f"{datetime.now().strftime('%b')} {day_num}"
+
+        t_date = datetime.now().strftime("%b %d")
         sess_str = "1 session" if t_sess == 1 else f"{t_sess} sessions"
-        print(f"  {t_date}     {GREEN}{format_cost(t_cost)}{RESET}     {sess_str}")
-        print()
-        
-        if t_sess > 1:
-            t_models = db.execute("""
-                SELECT COALESCE(json_extract(model, '$.id'), '(unknown)') as mdl, COUNT(*)
-                FROM session
-                WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
-                GROUP BY mdl ORDER BY COUNT(*) DESC LIMIT 4
-            """).fetchall()
-            
-            if t_models:
-                m_parts = [f"{ORANGE}{m}{RESET} ({c})" for m, c in t_models]
-                print(f"  {'     '.join(m_parts)}")
-                
+        cost_per_tok = t_cost / t_tokens * 1_000_000 if t_tokens > 0 else 0
+        print(f"  {t_date}     {GREEN}{format_cost(t_cost)}{RESET}     {sess_str}     {format_tokens(t_tokens)} tokens     ${cost_per_tok:.2f}/M tok")
+
+        t_models = db.execute("""
+            SELECT COALESCE(json_extract(model, '$.id'), '(unknown)') as mdl,
+                   ROUND(SUM(cost), 2) as mcost
+            FROM session
+            WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
+            GROUP BY mdl ORDER BY mcost DESC LIMIT 3
+        """).fetchall()
+
+        if t_models:
+            m_parts = []
+            for mdl, mcost in t_models:
+                pct = mcost / t_cost * 100 if t_cost > 0 else 0
+                m_parts.append(f"{ORANGE}{mdl}{RESET} {pct:.0f}%")
+            print(f"  {'     '.join(m_parts)}")
+
         t_projs = db.execute("""
             SELECT COALESCE(directory, '(no project)') as dir, COUNT(*)
             FROM session
             WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
             GROUP BY dir ORDER BY COUNT(*) DESC LIMIT 4
         """).fetchall()
-        
+
         if t_projs:
             p_parts = [f"{GREEN}{short_dir(d)}{RESET} ({c})" for d, c in t_projs]
             print(f"  {'     '.join(p_parts)}")
