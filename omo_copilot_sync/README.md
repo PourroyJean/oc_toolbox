@@ -1,11 +1,11 @@
-# omo_vs_copilot_sync
+# omo_copilot_sync
 
 ## OpenCode Prompt
 
 Use this prompt in OpenCode to run a full audit and upgrade cycle:
 
 ```
-- Run `omo_vs_copilot_sync` to test my GitHub Copilot model availability and validate my OMO config. 
+- Run `omo_copilot_sync` to test my GitHub Copilot model availability and validate my OMO config. 
 - Then read the OMO reference docs at https://github.com/code-yeongyu/oh-my-openagent/blob/dev/docs/reference/configuration.md (sections "Agent Provider Chains" and "Category Provider Chains"). 
 - Compare my current config (~/.config/opencode/oh-my-openagent.json) against the official recommendations, only proposing models confirmed available by the script.
 - Present a table of recommended changes with justification, then ask me for validation before applying.
@@ -17,8 +17,8 @@ Test all models available from your GitHub Copilot subscription, then cross-chec
 
 
 ```
-❯ omo_vs_copilot_sync --help
-Usage: omo_vs_copilot_sync [options]
+❯ omo_copilot_sync --help
+Usage: omo_copilot_sync [options]
 
 Verify GitHub Copilot model availability and validate OMO config.
 
@@ -55,7 +55,7 @@ Options:
 ```bash
 # Symlink (updates automatically with git pull)
 mkdir -p ~/.local/bin
-ln -sf "$(pwd)/omo_vs_copilot_sync" ~/.local/bin/omo_vs_copilot_sync
+ln -sf "$(pwd)/omo_copilot_sync" ~/.local/bin/omo_copilot_sync
 ```
 
 Make sure `~/.local/bin` is in your `PATH`.
@@ -64,16 +64,16 @@ Make sure `~/.local/bin` is in your `PATH`.
 
 ```bash
 # Full test: probe every model + validate config (~3 min)
-omo_vs_copilot_sync
+omo_copilot_sync
 
 # Quick check: just verify config models are listed by the provider (instant)
-omo_vs_copilot_sync --quick
+omo_copilot_sync --quick
 
 # Custom config path
-omo_vs_copilot_sync --config ~/my-project/oh-my-openagent.json
+omo_copilot_sync --config ~/my-project/oh-my-openagent.json
 
 # Shorter timeout per model
-omo_vs_copilot_sync --timeout 15
+omo_copilot_sync --timeout 15
 ```
 
 ## Output
@@ -81,7 +81,7 @@ omo_vs_copilot_sync --timeout 15
 ### Phase 1 — Model availability
 
 ```
-❯ omo_vs_copilot_sync
+❯ omo_copilot_sync
 
 Fetching models from provider 'github-copilot'...
 Found 25 models.
@@ -138,4 +138,3 @@ gpt-5.5                                  OK
 CONFIG ISSUES: 1/9 models broken or missing.
 Available models: opencode models github-copilot
 ```
-

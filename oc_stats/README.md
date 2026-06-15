@@ -1,14 +1,14 @@
-# omo_stats
+# oc_stats
 
 Display OpenCode usage stats: cost, tokens, agents, and models. Covers the last 7 days by default, today only, or a single session with its full delegation tree.
 
-![omo_stats default output](../ressources/omo_stats.png)
+![oc_stats default output](../ressources/oc_stats.png)
 
 ## Install
 
 ```bash
 mkdir -p ~/.local/bin
-ln -sf "$(pwd)/omo_stats/omo_stats" ~/.local/bin/omo_stats
+ln -sf "$(pwd)/oc_stats/oc_stats" ~/.local/bin/oc_stats
 ```
 
 Make sure `~/.local/bin` is in your `PATH`.
@@ -17,13 +17,13 @@ Make sure `~/.local/bin` is in your `PATH`.
 
 ```bash
 # 7-day summary (default)
-omo_stats
+oc_stats
 
 # Today only
-omo_stats --today
+oc_stats --today
 
 # Single session detail with delegation tree
-omo_stats --session <ID>
+oc_stats --session <ID>
 ```
 
 ## Output

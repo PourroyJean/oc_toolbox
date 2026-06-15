@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""omo_stats - OpenCode usage statistics.
+"""oc_stats - OpenCode usage statistics.
 
 Displays aggregated usage statistics from OpenCode sessions stored locally.
 
@@ -399,7 +399,7 @@ def cmd_session(session_id):
     db.close()
 
 
-parser = argparse.ArgumentParser(prog="omo_stats", description="OpenCode usage statistics")
+parser = argparse.ArgumentParser(prog="oc_stats", description="OpenCode usage statistics")
 parser.add_argument("--today", action="store_true", help="Show today's sessions only")
 parser.add_argument("--session", metavar="ID", help="Show detail for a specific session ID")
 

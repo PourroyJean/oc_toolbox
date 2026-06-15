@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# omo_vs_copilot_sync - Verify GitHub Copilot model availability & OMO config validity
+# omo_copilot_sync - Verify GitHub Copilot model availability & OMO config validity
 #
 # Fetches the live model list from the provider, tests each one,
 # then cross-checks oh-my-openagent.json to flag broken references.
@@ -17,7 +17,7 @@ PROVIDER="github-copilot"
 
 usage() {
   cat <<EOF
-Usage: omo_vs_copilot_sync [options]
+Usage: omo_copilot_sync [options]
 
 Verify GitHub Copilot model availability and validate OMO config.
 

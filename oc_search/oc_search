@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ocsearch - Search and browse OpenCode sessions via fzf.
+"""oc_search - Search and browse OpenCode sessions via fzf.
 
 A lightweight CLI tool to list and search across all OpenCode sessions
 stored locally, with interactive fzf selection to jump into any session.
@@ -205,8 +205,8 @@ def open_session(session_id):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: ocsearch list          - list all sessions (interactive)")
-        print("       ocsearch search QUERY  - search session content")
+        print("Usage: oc_search list          - list all sessions (interactive)")
+        print("       oc_search search QUERY  - search session content")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -217,7 +217,7 @@ def main():
 
     elif cmd == "search":
         if len(sys.argv) < 3:
-            print("Usage: ocsearch search QUERY", file=sys.stderr)
+            print("Usage: oc_search search QUERY", file=sys.stderr)
             sys.exit(1)
         lines, header = cmd_search(" ".join(sys.argv[2:]))
         open_session(run_fzf(lines, header))

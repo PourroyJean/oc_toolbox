@@ -1,12 +1,12 @@
-# ocsearch
+# oc_search
 
 ```
-❯ ocsearch
-Usage: ocsearch list          - list all sessions
-       ocsearch search QUERY  - search sessions that match content
+❯ oc_search
+Usage: oc_search list          - list all sessions
+       oc_search search QUERY  - search sessions that match content
 ```
 
-![ocsearch list](./assets/screenshot.png)
+![oc_search list](./assets/screenshot.png)
 
 
 Search and browse all OpenCode sessions across every project on your machine, with interactive [fzf](https://github.com/junegunn/fzf) selection.
@@ -30,7 +30,7 @@ Search and browse all OpenCode sessions across every project on your machine, wi
 ```bash
 # Symlink (updates automatically with git pull)
 mkdir -p ~/.local/bin
-ln -sf "$(pwd)/ocsearch" ~/.local/bin/ocsearch
+ln -sf "$(pwd)/oc_search" ~/.local/bin/oc_search
 ```
 
 Make sure `~/.local/bin` is in your `PATH`.
@@ -39,20 +39,20 @@ Make sure `~/.local/bin` is in your `PATH`.
 
 ```bash
 # List all sessions (most recent first)
-ocsearch list
+oc_search list
 
 # Search for a topic across all session content
-ocsearch search "kubernetes"
-ocsearch search "auth middleware"
+oc_search search "kubernetes"
+oc_search search "auth middleware"
 ```
 
 ### Pipe mode
 
-When stdout is not a TTY, ocsearch dumps plain output for scripting:
+When stdout is not a TTY, oc_search dumps plain output for scripting:
 
 ```bash
-ocsearch list | grep "my-project"
-ocsearch search "bug" | wc -l
+oc_search list | grep "my-project"
+oc_search search "bug" | wc -l
 ```
 
 ## Output columns
