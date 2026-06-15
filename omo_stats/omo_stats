@@ -166,14 +166,15 @@ def cmd_default():
                 print(f"  {ORANGE}{mdl:<{max_mdl}}{RESET}  {format_tokens(mtokens):>6}  {GREEN}{format_cost(mcost):>8}{RESET}  ${cpm:.1f}/M  {mcnt} sess")
 
         t_projs = db.execute("""
-            SELECT COALESCE(directory, '(no project)') as dir, COUNT(*)
+            SELECT COALESCE(directory, '(no project)') as dir,
+                   ROUND(SUM(cost), 2) as pcost
             FROM session
             WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
-            GROUP BY dir ORDER BY COUNT(*) DESC LIMIT 4
+            GROUP BY dir ORDER BY pcost DESC LIMIT 4
         """).fetchall()
 
         if t_projs:
-            p_parts = [f"{GREEN}{short_dir(d)}{RESET} ({c})" for d, c in t_projs]
+            p_parts = [f"{GREEN}{short_dir(d)}{RESET} ({format_cost(c)})" for d, c in t_projs]
             print(f"  {'     '.join(p_parts)}")
 
     # --- By Agent ---
