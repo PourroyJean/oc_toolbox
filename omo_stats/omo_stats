@@ -143,14 +143,12 @@ def cmd_default():
         print()
 
         t_date = datetime.now().strftime("%b %d")
-        sess_str = "1 session" if t_sess == 1 else f"{t_sess} sessions"
-        cost_per_tok = t_cost / t_tokens * 1_000_000 if t_tokens > 0 else 0
-        print(f"  {t_date}     {GREEN}{format_cost(t_cost)}{RESET}     {sess_str}     {format_tokens(t_tokens)} tokens     ${cost_per_tok:.2f}/M tok")
 
         t_models = db.execute("""
             SELECT COALESCE(json_extract(model, '$.id'), '(unknown)') as mdl,
                    ROUND(SUM(cost), 2) as mcost,
-                   SUM(tokens_input + tokens_output) as mtokens
+                   SUM(tokens_input + tokens_output) as mtokens,
+                   COUNT(*) as mcnt
             FROM session
             WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
             GROUP BY mdl ORDER BY mcost DESC LIMIT 3
@@ -158,11 +156,14 @@ def cmd_default():
 
         if t_models:
             max_mdl = max(len(r[0]) for r in t_models)
-            for mdl, mcost, mtokens in t_models:
+            max_mdl = max(max_mdl, len(t_date))
+            cost_per_tok = t_cost / t_tokens * 1_000_000 if t_tokens > 0 else 0
+            sess_str = f"{t_sess} sess"
+            print(f"  {WHITE}{t_date:<{max_mdl}}{RESET}  {format_tokens(t_tokens):>6}  {GREEN}{format_cost(t_cost):>8}{RESET}  ${cost_per_tok:.1f}/M  {sess_str}")
+            for mdl, mcost, mtokens, mcnt in t_models:
                 mtokens = mtokens or 0
-                pct = mcost / t_cost * 100 if t_cost > 0 else 0
                 cpm = mcost / mtokens * 1_000_000 if mtokens > 0 else 0
-                print(f"  {ORANGE}{mdl:<{max_mdl}}{RESET}  {format_tokens(mtokens):>6}  {GREEN}{format_cost(mcost):>8}{RESET}  ${cpm:.1f}/M  {pct:.0f}%")
+                print(f"  {ORANGE}{mdl:<{max_mdl}}{RESET}  {format_tokens(mtokens):>6}  {GREEN}{format_cost(mcost):>8}{RESET}  ${cpm:.1f}/M  {mcnt} sess")
 
         t_projs = db.execute("""
             SELECT COALESCE(directory, '(no project)') as dir, COUNT(*)
