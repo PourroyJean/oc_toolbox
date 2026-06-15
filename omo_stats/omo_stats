@@ -224,27 +224,42 @@ def cmd_default():
     # --- Daily ---
     daily_rows = db.execute("""
         SELECT date(time_created/1000, 'unixepoch', 'localtime') as day,
-               ROUND(SUM(cost), 2) as daily_cost
+               ROUND(SUM(cost), 2) as daily_cost,
+               SUM(tokens_input + tokens_output) as daily_tokens
         FROM session WHERE time_created >= ?
         GROUP BY day ORDER BY day DESC
     """, (seven_days_ms,)).fetchall()
 
+    # Top model per day
+    daily_models = {}
+    for row in db.execute("""
+        SELECT date(time_created/1000, 'unixepoch', 'localtime') as day,
+               COALESCE(json_extract(model, '$.id'), '?') as mdl,
+               ROUND(SUM(cost), 2) as mcost
+        FROM session WHERE time_created >= ?
+        GROUP BY day, mdl ORDER BY day DESC, mcost DESC
+    """, (seven_days_ms,)).fetchall():
+        if row[0] not in daily_models:
+            daily_models[row[0]] = row[1]
+
     if daily_rows:
         print()
-        print(f"  {WHITE}─── Daily {'─' * 36}{RESET}")
+        print(f"  {WHITE}─── Daily {'─' * (W - 10)}{RESET}")
         print()
         max_day_cost = max(r[1] for r in daily_rows) if daily_rows else 1
         peak_day = max(daily_rows, key=lambda r: r[1])[0] if daily_rows else None
-        for day_str, daily_cost in daily_rows:
-            # Parse date for nice label: "2026-06-11" → "Jun 11"
+        for day_str, daily_cost, daily_tokens in daily_rows:
+            daily_tokens = daily_tokens or 0
             try:
                 dt = datetime.strptime(day_str, "%Y-%m-%d")
                 label = dt.strftime("%b %d")
             except ValueError:
                 label = day_str
-            b = bar(daily_cost, max_day_cost, width=34)
-            peak_marker = "  ← peak" if day_str == peak_day and len(daily_rows) > 1 else ""
-            print(f"  {WHITE}{label}{RESET}  {GREEN}{b}{RESET}  {format_cost(daily_cost)}{ORANGE}{peak_marker}{RESET}")
+            b = bar(daily_cost, max_day_cost, width=20)
+            cost_per_m = daily_cost / daily_tokens * 1_000_000 if daily_tokens > 0 else 0
+            top_mdl = daily_models.get(day_str, "")
+            peak_marker = " ← peak" if day_str == peak_day and len(daily_rows) > 1 else ""
+            print(f"  {WHITE}{label}{RESET}  {GREEN}{b}{RESET}  {format_cost(daily_cost):>8}  {format_tokens(daily_tokens):>6}  ${cost_per_m:.1f}/M  {ORANGE}{top_mdl}{RESET}{peak_marker}")
 
     # --- Top Projects ---
     project_rows = db.execute("""
