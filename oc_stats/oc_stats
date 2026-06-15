@@ -167,6 +167,7 @@ def cmd_default():
 
         t_projs = db.execute("""
             SELECT COALESCE(directory, '(no project)') as dir,
+                   SUM(tokens_input + tokens_output) as ptokens,
                    ROUND(SUM(cost), 2) as pcost
             FROM session
             WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
@@ -174,8 +175,10 @@ def cmd_default():
         """).fetchall()
 
         if t_projs:
-            p_parts = [f"{GREEN}{short_dir(d)}{RESET} ({format_cost(c)})" for d, c in t_projs]
-            print(f"  {'     '.join(p_parts)}")
+            max_dir = max(len(short_dir(d)) for d, _, _ in t_projs)
+            for proj_dir, ptokens, pcost in t_projs:
+                ptokens = ptokens or 0
+                print(f"  {GREEN}{short_dir(proj_dir):<{max_dir}}{RESET}  {format_tokens(ptokens):>6}  {format_cost(pcost):>8}")
 
     # --- By Agent ---
     agent_rows = db.execute("""
