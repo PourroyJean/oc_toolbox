@@ -149,18 +149,20 @@ def cmd_default():
 
         t_models = db.execute("""
             SELECT COALESCE(json_extract(model, '$.id'), '(unknown)') as mdl,
-                   ROUND(SUM(cost), 2) as mcost
+                   ROUND(SUM(cost), 2) as mcost,
+                   SUM(tokens_input + tokens_output) as mtokens
             FROM session
             WHERE date(time_created/1000, 'unixepoch', 'localtime') = date('now', 'localtime')
             GROUP BY mdl ORDER BY mcost DESC LIMIT 3
         """).fetchall()
 
         if t_models:
-            m_parts = []
-            for mdl, mcost in t_models:
+            max_mdl = max(len(r[0]) for r in t_models)
+            for mdl, mcost, mtokens in t_models:
+                mtokens = mtokens or 0
                 pct = mcost / t_cost * 100 if t_cost > 0 else 0
-                m_parts.append(f"{ORANGE}{mdl}{RESET} {pct:.0f}%")
-            print(f"  {'     '.join(m_parts)}")
+                cpm = mcost / mtokens * 1_000_000 if mtokens > 0 else 0
+                print(f"  {ORANGE}{mdl:<{max_mdl}}{RESET}  {format_tokens(mtokens):>6}  {GREEN}{format_cost(mcost):>8}{RESET}  ${cpm:.1f}/M  {pct:.0f}%")
 
         t_projs = db.execute("""
             SELECT COALESCE(directory, '(no project)') as dir, COUNT(*)
