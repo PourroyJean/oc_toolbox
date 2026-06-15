@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/oh-my-opencode.schema.json",
   "agents": {
     "sisyphus": {
-      "model": "github-copilot/claude-opus-4.8",
+      "model": "github-copilot/claude-opus-4.6",
       "variant": "max",
       "fallback_models": [
         {
@@ -35,7 +35,7 @@
           "variant": "high"
         },
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         }
       ],
@@ -76,7 +76,7 @@
       "comment": "Vision tasks - gpt-5.5 per docs"
     },
     "prometheus": {
-      "model": "github-copilot/claude-opus-4.8",
+      "model": "github-copilot/claude-opus-4.6",
       "variant": "max",
       "fallback_models": [
         {
@@ -98,7 +98,7 @@
       "model": "github-copilot/claude-sonnet-4.6",
       "fallback_models": [
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         },
         {
@@ -113,7 +113,7 @@
       "variant": "xhigh",
       "fallback_models": [
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         },
         {
@@ -150,7 +150,7 @@
       "variant": "high",
       "fallback_models": [
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         }
       ],
@@ -165,7 +165,7 @@
           "variant": "high"
         },
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         }
       ],
@@ -176,7 +176,7 @@
       "variant": "medium",
       "fallback_models": [
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         },
         {
@@ -191,7 +191,7 @@
       "variant": "high",
       "fallback_models": [
         {
-          "model": "github-copilot/claude-opus-4.8",
+          "model": "github-copilot/claude-opus-4.6",
           "variant": "max"
         },
         {
@@ -226,7 +226,7 @@
       "comment": "Low-effort misc - sonnet per docs"
     },
     "unspecified-high": {
-      "model": "github-copilot/claude-opus-4.8",
+      "model": "github-copilot/claude-opus-4.6",
       "variant": "max",
       "fallback_models": [
         {
@@ -250,7 +250,7 @@
       "comment": "Documentation and prose - gemini-3.5-flash GA, stable"
     },
     "reasoning": {
-      "model": "github-copilot/claude-opus-4.8",
+      "model": "github-copilot/claude-opus-4.6",
       "variant": "max",
       "fallback_models": [
         {
