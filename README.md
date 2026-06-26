@@ -1,6 +1,6 @@
 # OMO Toolbox
 
-A collection of CLI tools for [OpenCode](https://github.com/anomalyco/opencode) power users.
+A collection of CLI tools and shared skills for [OpenCode](https://github.com/anomalyco/opencode) power users.
 
 ## Tools
 
@@ -10,3 +10,4 @@ A collection of CLI tools for [OpenCode](https://github.com/anomalyco/opencode) 
 | [omo_copilot_sync](./omo_copilot_sync/) | Verify GitHub Copilot model availability and validate OMO config |
 | [omo_config](./omo_config/) | Versioned oh-my-openagent configuration (agents, categories, provider chains) |
 | [oc_stats](./oc_stats/) | Display OpenCode usage stats: cost, tokens, agents, models |
+| [skills](./skills/) | Shared OpenCode skills auto-loaded across all projects (e.g. PDF ingestion) |

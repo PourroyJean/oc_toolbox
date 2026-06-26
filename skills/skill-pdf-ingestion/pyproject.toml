@@ -1,0 +1,17 @@
+[project]
+name = "pdf-to-md"
+version = "1.0.0"
+description = "PDF to Markdown via Marker — portable CLI wrapper"
+requires-python = ">=3.11"
+dependencies = [
+    "marker-pdf>=1.10.2",
+]
+
+[project.scripts]
+pdf-to-md = "pdf_to_md:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]

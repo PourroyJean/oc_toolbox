@@ -1,2 +1,5 @@
 .sisyphus/
 __pycache__/
+.DS_Store
+.venv/
+skills/skill-pdf-ingestion/uv.lock
